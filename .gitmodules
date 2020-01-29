@@ -1,0 +1,9 @@
+[submodule "modules/arc-mc-components"]
+	path = modules/arc-mc-components
+	url = https://github.com/ARC2020/arc-mc-components.git
+[submodule "modules/arc-mc-ui"]
+	path = modules/arc-mc-ui
+	url = https://github.com/ARC2020/arc-mc-ui.git
+[submodule "modules/arc-mc-ctrlsys"]
+	path = modules/arc-mc-ctrlsys
+	url = https://github.com/ARC2020/arc-mc-ctrlsys.git
