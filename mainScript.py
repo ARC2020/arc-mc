@@ -1,6 +1,6 @@
-from modules.arc-mc-ui.AppARC import AppARC
-from modules.arc-mc-ui.XboxCtrl import XboxCtrl
-from modules.arc-mc-ui import globalsUI as globalsUI
+from modules.arc_mc_ui.AppARC import AppARC
+from modules.arc_mc_ui.XboxCtrl import XboxCtrl
+from modules.arc_mc_ui import globalsUI as globalsUI
 
 # from modules.arc-mc-ctrlsys import interfaces, pid
 # from modules.arc-mc-components import rpi-interface, stepper
