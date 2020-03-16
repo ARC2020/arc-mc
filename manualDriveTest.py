@@ -24,16 +24,20 @@ def main():
             print('reconnecting to controller')
             sleep(1)
         elif controller.check_brake() == 0 and ebrake.flagBrake == 0:
-            # read controller.get_throttle_position() and write to throttle GPIO pin
-            throttlePos = controller.get_throttle_position()
-            throttleVoltage = Speed.joystickToThrottle(throttlePos)
-            throttle.setVolt(throttleVoltage)
-            print(f"throttlePos: {throttlePos}, throttleVolt: {throttleVoltage}")
-            # read controller.get_steering_position() and write to stepper GPIO pin
-            steeringPos = controller.get_steering_position()
-            steeringAngle = Steering.joystickToSteeringAngle(steeringPos)
-            #stepper.rotate(steeringAngle)
-            print(f"steeringPos: {steeringPos}, steeringAngle: {steeringAngle}")
+            try:
+                # read controller.get_throttle_position() and write to throttle GPIO pin
+                throttlePos = controller.get_throttle_position()
+                throttleVoltage = Speed.joystickToThrottle(throttlePos)
+                throttle.setVolt(throttleVoltage)
+                print(f"throttlePos: {throttlePos}, throttleVolt: {throttleVoltage}")
+                # read controller.get_steering_position() and write to stepper GPIO pin
+                steeringPos = controller.get_steering_position()
+                steeringAngle = Steering.joystickToSteeringAngle(steeringPos)
+                #stepper.rotate(steeringAngle)
+                print(f"steeringPos: {steeringPos}, steeringAngle: {steeringAngle}")
+            except Exception as e:
+                stepper.store()
+                print(e)
         else:
             print("Brake condition ",controller.check_brake())
             print(f"Ebrake flag: {ebrake.flagBrake}")
