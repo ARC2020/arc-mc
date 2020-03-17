@@ -16,7 +16,7 @@ def main():
     stepper = Stepper(gpio, pinDir = 17, pinPul = 27)
     stepper.setup()
     ebrake = Ebrake(gpio, pinMBrake = 23, pinEBrake = 24)
-    
+    ebrake.setup()
     while(1):
         sleep(0.5)
         if not controller.is_connected():
@@ -32,8 +32,8 @@ def main():
                 print(f"throttlePos: {throttlePos}, throttleVolt: {throttleVoltage}")
                 # read controller.get_steering_position() and write to stepper GPIO pin
                 steeringPos = controller.get_steering_position()
-                steeringAngle = Steering.joystickToSteeringAngle(steeringPos)
-                #stepper.rotate(steeringAngle)
+                steeringAngle = int(Steering.joystickToSteeringAngle(steeringPos))
+                stepper.rotate(steeringAngle)
                 print(f"steeringPos: {steeringPos}, steeringAngle: {steeringAngle}")
             except Exception as e:
                 stepper.store()
