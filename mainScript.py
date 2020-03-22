@@ -1,8 +1,10 @@
+simMode = True
+
 from modules.arc_mc_ui.AppARC import AppARC
 from modules.arc_mc_ui.XboxCtrl import XboxCtrl
 
-# from modules.arc-mc-ctrlsys import interfaces, pid
-# from modules.arc-mc-components import rpi-interface, stepper
+from modules.arc_mc_ctrlsys import interfaces, pid
+from modules.arc_mc_components import rpi_interface, stepper
 from time import sleep
 
 ###################
@@ -19,7 +21,9 @@ gui = AppARC()
 gui.start()
 
 # Peripheral initialization
-manual_controller = XboxCtrl()
+if simMode:
+    manual_controller = XboxCtrl(simMode)
+    gpio = IO(simMode)
 
 # Socket initialization
 # TODO on socket event, display images on GUI - call gui.display_image(file_path)
