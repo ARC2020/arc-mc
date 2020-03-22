@@ -1,6 +1,5 @@
 from modules.arc_mc_ui.AppARC import AppARC
 from modules.arc_mc_ui.XboxCtrl import XboxCtrl
-from modules.arc_mc_ui import globalsUI as globalsUI
 
 # from modules.arc-mc-ctrlsys import interfaces, pid
 # from modules.arc-mc-components import rpi-interface, stepper
@@ -40,12 +39,12 @@ gui.raise_main_frame()
 
 while gui.isAlive():
     # if user has not started the trike, continue looping
-    if not globalsUI.is_trike_started:
+    if not gui.is_trike_started:
         print('waiting for trike to start')
         sleep(2)
         continue
 
-    if globalsUI.is_auto_mode:
+    if gui.is_auto_mode:
         print('in auto loop')
     else:  # manual mode
         if not manual_controller.is_connected():
@@ -54,7 +53,7 @@ while gui.isAlive():
             sleep(1)
             continue
 
-        if manual_controller.check_brake() == 0 or not globalsUI.is_auto_mode:
+        if manual_controller.check_brake() == 0 or not gui.is_auto_mode:
             # TODO in the condition above, also check the pysical brake GPIO pin
             # TODO read manual_controller.get_throttle_position() and write to throttle GPIO pin
             # TODO read manual_controller.get_stepper_position() and write to stepper GPIO pin
