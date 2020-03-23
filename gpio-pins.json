@@ -1,0 +1,10 @@
+{
+    "throttle" : 4,
+    "stepperDir" : 17,
+    "stepperPul" : 27,
+    "mBrake" : 23,
+    "eBrake" : 24,
+    "tachometerButton" : 9,
+    "tachometerSense" : 10,
+    "tachometerPower" : 11
+}
