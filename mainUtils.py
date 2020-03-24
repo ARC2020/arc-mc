@@ -63,9 +63,33 @@ class MainUtils():
             self.stepper.store()
             # print(e)
 
+    def setupAutoDrive(self):
+        self.steerCtrlSys = Steering()
+        self.speedCtrlSys = Speed()
+        self.steerCtrlSys.setup()
+        self.speedCtrlSys.setup()
+        # stop bike 
+        self.ebrake.setEbrake(state = 0)        
+
     def autoDrive(self):
-        # TODO autoDrive code
-        pass
+        # peripherals already initialized
+        # setupAutoDrive already initialized
+        success = 1
+        # TODO get CV data 
+        bikePos = 0
+        targetPos = 0
+        blobs = 0
+        # feed into ctrl sys
+        outputAngle = self.steerCtrlSys.feedInput(bikePos, targetPos)
+        outputVolt = self.speedCtrlSys.feedInput(blobs)
+        if outputAngle < 0 or outputVolt < 0:
+            success = 0
+        # apply outputs
+        if success:
+            self.stepper.rotate(outputAngle)
+            self.throttle.setVolt(outputVolt)
+        return success
+
 
     def deinit(self):
         self.ebrake.setEbrake(state = 0)
