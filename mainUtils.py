@@ -1,10 +1,14 @@
-from modules.arc_mc_ui.XboxCtrl import XboxCtrl
 from modules.arc_mc_components.throttle import Throttle
 from modules.arc_mc_components.stepper import Stepper
 from modules.arc_mc_components.ebrake import Ebrake
 from modules.arc_mc_components.tachometer import Tachometer
-from modules.arc_mc_components.rpi_interface import IO
 from modules.arc_mc_ctrlsys.interfaces import Steering, Speed
+
+try:
+    from modules.arc_mc_ui.XboxCtrl import XboxCtrl
+    from modules.arc_mc_components.rpi_interface import IO
+except:
+    pass
 
 from json import load
 from time import sleep
@@ -18,33 +22,30 @@ class MainUtils():
         self.stepper = None
         self.tachometer = None
         self.gpio = None
-        self.manualController = XboxCtrl(simulationMode)
-        self.gpioPeripheralSetup(gpioFileName)
-        
+
+    def connectPeripherals(self):
+        self.manualController = XboxCtrl(self.simMode)
+        self.gpioPeripheralSetup(self.gpioFileName)
+
     def gpioPeripheralSetup(self, fileName = None):
+        data = self.loadJson(fileName)
+        self.gpio = IO()
+        self.throttle = Throttle(self.gpio, pin = data["throttle"], pwm = 0)
+        self.throttle.setup()
+        self.stepper = Stepper(self.gpio, pinDir = data["stepperDir"], pinPul = data["stepperPul"])
+        self.stepper.setup()
+        self.ebrake = Ebrake(self.gpio, data["mBrake"], data["eBrake"])
+        self.ebrake.setup()
+        self.tachometer = Tachometer(self.gpio, data["tachometerSense"], data["tachometerButton"], data["tachometerPower"])
+        self.tachometer.setup()
+
+    def loadJson(self, fileName = None):
         if fileName is None:
             fileName = self.gpioFileName
         with open(fileName) as f:
             data = load(f)
-            pinThrottle = data["throttle"]
-            pinStepDir = data["stepperDir"]
-            pinStepPul = data["stepperPul"]
-            pinMBrake = data["mBrake"]
-            pinEBrake = data["eBrake"]
-            pinTachBtn = data["tachometerButton"]
-            pinTachSense = data["tachometerSense"]
-            pinTachPwr = data["tachometerPower"]
-
-        self.gpio = IO()
-        self.throttle = Throttle(self.gpio, pin = pinThrottle, pwm = 0)
-        self.throttle.setup()
-        self.stepper = Stepper(self.gpio, pinDir = pinStepDir, pinPul = pinStepPul)
-        self.stepper.setup()
-        self.ebrake = Ebrake(self.gpio, pinMBrake, pinEBrake)
-        self.ebrake.setup()
-        self.tachometer = Tachometer(self.gpio, pinTachSense, pinTachBtn, pinTachPwr)
-        self.tachometer.setup()
-
+            return data
+            
     def manualDrive(self):
         try:
             # read controller.get_throttle_position() and write to throttle GPIO pin
@@ -62,14 +63,38 @@ class MainUtils():
             self.stepper.store()
             # print(e)
 
+    def setupAutoDrive(self):
+        self.steerCtrlSys = Steering()
+        self.speedCtrlSys = Speed()
+        self.steerCtrlSys.setup()
+        self.speedCtrlSys.setup()
+        # stop bike 
+        self.ebrake.setEbrake(state = 0)        
+
     def autoDrive(self):
-        # TODO autoDrive code
-        pass
+        # peripherals already initialized
+        # setupAutoDrive already initialized
+        success = 1
+        # TODO get CV data 
+        bikePos = 0
+        targetPos = 0
+        blobs = 0
+        # feed into ctrl sys
+        outputAngle = self.steerCtrlSys.feedInput(bikePos, targetPos)
+        outputVolt = self.speedCtrlSys.feedInput(blobs)
+        if outputAngle < 0 or outputVolt < 0:
+            success = 0
+        # apply outputs
+        if success:
+            self.stepper.rotate(outputAngle)
+            self.throttle.setVolt(outputVolt)
+        return success
+
 
     def deinit(self):
         self.ebrake.setEbrake(state = 0)
         self.throttle.off()
         self.stepper.reset()
-        self.tachometer.off() # TODO double-check this
+        self.tachometer.off() 
         self.gpio.disconnect()
         self.manualController.deinit()
