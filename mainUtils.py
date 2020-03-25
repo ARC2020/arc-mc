@@ -1,12 +1,12 @@
 from modules.arc_mc_components.throttle import Throttle
 from modules.arc_mc_components.stepper import Stepper
 from modules.arc_mc_components.ebrake import Ebrake
-from modules.arc_mc_components.tachometer import Tachometer
 from modules.arc_mc_ctrlsys.interfaces import Steering, Speed
 
 try:
     from modules.arc_mc_ui.XboxCtrl import XboxCtrl
     from modules.arc_mc_components.rpi_interface import IO
+    from modules.arc_mc_components.tachometer import Tachometer
 except:
     pass
 
@@ -22,6 +22,7 @@ class MainUtils():
         self.stepper = None
         self.tachometer = None
         self.gpio = None
+        self.reinitAutoDrive = True
 
     def connectPeripherals(self):
         self.manualController = XboxCtrl(self.simMode)
@@ -64,16 +65,19 @@ class MainUtils():
             # print(e)
 
     def setupAutoDrive(self):
+        self.ebrake.setEbrake(state = 0) # stop bike 
         self.steerCtrlSys = Steering()
         self.speedCtrlSys = Speed()
         self.steerCtrlSys.setup()
         self.speedCtrlSys.setup()
-        # stop bike 
-        self.ebrake.setEbrake(state = 0)        
+        self.reinitAutoDrive = False 
 
     def autoDrive(self):
         # peripherals already initialized
-        # setupAutoDrive already initialized
+        # initialize autoDrive if necessary
+        if self.reinitAutoDrive:
+            self.setupAutoDrive()
+       
         success = 1
         # TODO get CV data 
         bikePos = 0

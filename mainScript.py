@@ -1,4 +1,4 @@
-simMode = False
+simMode = True
 
 from modules.arc_mc_ui.AppARC import AppARC
 from time import sleep
@@ -13,8 +13,9 @@ gui = AppARC()
 gui.start()
 
 # Peripheral initialization
-mainUtils = MainUtils(simMode)          
-    # TODO figure out how behaviour for gpio peripherals would differ in simMode
+mainUtils = MainUtils(simMode) 
+if not simMode:
+    mainUtils.connectPeripherals()
     # includes throttle, stepper, ebrake and tachometer gpio setup
     # includes manual controller setup - set simMode to true if controller is not connected
 
@@ -30,13 +31,14 @@ mainUtils = MainUtils(simMode)
 
 
 # after the init and calibrate states, call gui.raise_main_frame to close the loading screen
+sleep(0.25)
 gui.raise_main_frame()
 
 ###################
 # Drive Loop
 ###################
 
-while gui.isAlive():
+while gui.is_alive():
     # if user has not started the trike, continue looping
     if not gui.is_trike_started:
         print('waiting for trike to start')
@@ -44,29 +46,28 @@ while gui.isAlive():
         continue
 
     if gui.is_auto_mode:
-        mainUtils.autoDrive()
-        # TODO if obstacle detected, display prompt using:
-        # response = gui.show_yesno_prompt('Obstacle Detected', 'Would you like to switch to manual mode?')
-        # if response:
-        #     gui.toggle_mode(False) #False sets it to manual_mode, True sets it to auto_mode
-        # ----OR----
-        # gui.show_info_prompt('Obstacle Detected', 'Click ok to switch to manual mode.') 
-        # gui.toggle_mode(False) #False sets it to manual_mode, True sets it to auto_mode
+        if not simMode:
+            success = mainUtils.autoDrive()
+            if not success:
+                gui.show_info_prompt('Obstacle Detected', 
+                    'An obstacle was detected. Please click OK to switch to manual drive mode.') 
+                gui.toggle_mode(False) # False sets mode to manual, True sets mode to auto
         print('in auto loop')
+       
     else:  # manual mode
-        if not mainUtils.manualController.is_connected():
-            mainUtils.manualController.reconnect()
-            print('trying to connect to controller')
-            sleep(1)
-            continue
-
-        if mainUtils.manualController.check_brake() == 0 and mainUtils.ebrake.flagBrake == 0:
-            mainUtils.manualDrive()
-            print('in manual loop')
+        mainUtils.reinitAutoDrive = True
+        if not simMode:
+            if not mainUtils.manualController.is_connected():
+                mainUtils.manualController.reconnect()
+                print('trying to connect to controller')
+                sleep(1)
+                continue
+            if mainUtils.manualController.check_brake() == 0 and mainUtils.ebrake.flagBrake == 0:
+                mainUtils.manualDrive()
+        print('in manual loop')
     
     #display speed on gui
     gui.display_speed(mainUtils.tachometer.speed)
-
 
 ###################
 # Deinitialize
