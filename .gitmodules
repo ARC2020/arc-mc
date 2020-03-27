@@ -7,3 +7,6 @@
 [submodule "modules/arc-mc-ctrlsys"]
 	path = modules/arc_mc_ctrlsys
 	url = https://github.com/ARC2020/arc-mc-ctrlsys.git
+[submodule "modules/arc_comms"]
+	path = modules/arc_comms
+	url = https://github.com/ARC2020/arc-comms.git
