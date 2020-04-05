@@ -1,5 +1,3 @@
-simMode = True
-
 from modules.arc_mc_ui.AppARC import AppARC
 from time import sleep
 from mainUtils import MainUtils
@@ -8,6 +6,8 @@ from mainUtils import MainUtils
 # Initialization
 ###################
 
+simMode = True
+
 # GUI Initialization - spawn the UI thread and display the loading screen
 gui = AppARC()
 gui.start()
@@ -15,10 +15,7 @@ gui.start()
 # Peripheral initialization
 mainUtils = MainUtils(simMode) 
 if not simMode:
-    mainUtils.connectPeripherals()
-    # includes throttle, stepper, ebrake and tachometer gpio setup
-    # includes manual controller setup - set simMode to true if controller is not connected
-
+    mainUtils.connectPeripherals() # throttle, stepper, ebrake, tachometer and manual controller setup
 
 # Socket initialization
 # TODO on socket event, display images on GUI - call gui.display_image(file_path)
@@ -28,10 +25,10 @@ if not simMode:
 ###################
 # Calibration
 ###################
-
+# TODO I don't think there is anything to do here for simMode
 
 # after the init and calibrate states, call gui.raise_main_frame to close the loading screen
-sleep(0.25)
+sleep(0.25) # this is necessary
 gui.raise_main_frame()
 
 ###################
@@ -46,12 +43,11 @@ while gui.is_alive():
         continue
 
     if gui.is_auto_mode:
-        if not simMode:
-            success = mainUtils.autoDrive()
-            if not success:
-                gui.show_info_prompt('Obstacle Detected', 
-                    'An obstacle was detected. Please click OK to switch to manual drive mode.') 
-                gui.toggle_mode(False) # False sets mode to manual, True sets mode to auto
+        success = mainUtils.autoDrive()
+        if not success:
+            gui.show_info_prompt('Obstacle Detected', 
+                'An obstacle was detected. Please click OK to switch to manual drive mode.') 
+            gui.toggle_mode(False) # False sets mode to manual, True sets mode to auto
         print('in auto loop')
        
     else:  # manual mode
@@ -72,7 +68,8 @@ while gui.is_alive():
 ###################
 # Deinitialize
 ###################
-mainUtils.deinit()
+if not simMode:
+    mainUtils.deinit()
 # not necessary to call gui.deinit() here because that is what triggers the drive loop to end
 
 ##############

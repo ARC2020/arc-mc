@@ -1,12 +1,13 @@
 from modules.arc_mc_components.throttle import Throttle
 from modules.arc_mc_components.stepper import Stepper
 from modules.arc_mc_components.ebrake import Ebrake
-from modules.arc_mc_ctrlsys.interfaces import Steering, Speed
+from modules.arc_mc_ctrlsys.interfaces import Steering, Speed, Blobs
 
 try:
     from modules.arc_mc_ui.XboxCtrl import XboxCtrl
     from modules.arc_mc_components.rpi_interface import IO
     from modules.arc_mc_components.tachometer import Tachometer
+    import numpy as np 
 except:
     pass
 
@@ -66,34 +67,52 @@ class MainUtils():
 
     def setupAutoDrive(self):
         self.ebrake.setEbrake(state = 0) # stop bike 
+        self.blobsCtrlSys = Blobs(circ = 2.055, bikeHalfWidth = 100) # set bike half width in pixels
+        self.speedCtrlSys = Speed(circ = 2.055)
         self.steerCtrlSys = Steering()
-        self.speedCtrlSys = Speed()
         self.steerCtrlSys.setup()
         self.speedCtrlSys.setup()
         self.reinitAutoDrive = False 
 
     def autoDrive(self):
-        # peripherals already initialized
+        # peripherals already initialized if not simMode
         # initialize autoDrive if necessary
         if self.reinitAutoDrive:
             self.setupAutoDrive()
        
         success = 1
-        # TODO get CV data 
-        bikePos = 0
-        targetPos = 0
-        blobs = 0
-        # feed into ctrl sys
-        outputAngle = self.steerCtrlSys.feedInput(bikePos, targetPos)
-        outputVolt = self.speedCtrlSys.feedInput(blobs)
-        if outputAngle < 0 or outputVolt < 0:
-            success = 0
-        # apply outputs
-        if success:
-            self.stepper.rotate(outputAngle)
-            self.throttle.setVolt(outputVolt)
-        return success
 
+        # TODO get actual CV data (probably pass object as parameter) and make sure this is the new data types
+        sizeRand = np.random.randint(0,20)
+        blobXpos = np.random.randint(0, 800, size = sizeRand)
+        blobWidths = np.random.randint(0, 200, size = sizeRand)
+        blobDepths = np.random.uniform(3, 15, size = sizeRand)
+        bikeSpeed = np.random.uniform(0.2,1)
+        bikePosPx = np.random.randint(200,600)
+        targetPosM = np.random.uniform(0,0.5)
+        bikePosM = np.random.uniform(0,0.5)
+        sleep(0.1) #TODO double-check if this is necessary?
+        
+        # update blobs
+        self.blobsCtrlSys.update(xPos = blobXpos, widths = blobWidths, depths = blobDepths, bikePos = bikePosPx)
+        crashTimes = self.blobsCtrlSys.checkCrash(bikeSpeed)
+      
+        if self.blobsCtrlSys.checkEmergencyStop(crashTimes):
+            # TODO double-check if this is the only condition that results in sucess = 0
+            success = 0
+        else: 
+            # calculate steering angle and throttle voltage
+            throttleVolt = self.speedCtrlSys.feedInput(bikeSpeed, crashTimes)
+            steeringAngle = self.steerCtrlSys.feedInput(bikePosM, targetPosM, distanceTarget = 1)
+            # TODO double-check if it's possible for the above two values to somehow indicate error (maybe negative or None?)
+            if not self.simMode: # apply outputs
+                self.stepper.rotate(steeringAngle)
+                self.throttle.setVolt(throttleVolt)
+
+        #print(f"inputs: bikeSpeed {bikeSpeed}, bike pos {bikePosM}, target pos {targetPosM}, crashTimes {crashTimes}")
+        #print(f"outputs: throttleVolt {throttleVolt}, steeringAngle {steeringAngle}")
+        
+        return success
 
     def deinit(self):
         self.ebrake.setEbrake(state = 0)
