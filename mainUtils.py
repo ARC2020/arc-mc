@@ -91,20 +91,18 @@ class MainUtils():
         bikePosPx = np.random.randint(200,600)
         targetPosM = np.random.uniform(0,0.5)
         bikePosM = np.random.uniform(0,0.5)
-        sleep(0.1) #TODO double-check if this is necessary?
+        sleep(0.1)
         
         # update blobs
         self.blobsCtrlSys.update(xPos = blobXpos, widths = blobWidths, depths = blobDepths, bikePos = bikePosPx)
         crashTimes = self.blobsCtrlSys.checkCrash(bikeSpeed)
       
         if self.blobsCtrlSys.checkEmergencyStop(crashTimes):
-            # TODO double-check if this is the only condition that results in sucess = 0
             success = 0
         else: 
             # calculate steering angle and throttle voltage
             throttleVolt = self.speedCtrlSys.feedInput(bikeSpeed, crashTimes)
             steeringAngle = self.steerCtrlSys.feedInput(bikePosM, targetPosM, distanceTarget = 1)
-            # TODO double-check if it's possible for the above two values to somehow indicate error (maybe negative or None?)
             if not self.simMode: # apply outputs
                 self.stepper.rotate(steeringAngle)
                 self.throttle.setVolt(throttleVolt)

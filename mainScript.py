@@ -21,11 +21,7 @@ if not simMode:
 # TODO on socket event, display images on GUI - call gui.display_image(file_path)
 # TODO socket stuff for depth and pathWidth data
 
-
-###################
-# Calibration
-###################
-# TODO I don't think there is anything to do here for simMode
+# if not simMode, at this point we would perform calibration
 
 # after the init and calibrate states, call gui.raise_main_frame to close the loading screen
 sleep(0.25) # this is necessary
@@ -48,6 +44,10 @@ while gui.is_alive():
             gui.show_info_prompt('Obstacle Detected', 
                 'An obstacle was detected. Please click OK to switch to manual drive mode.') 
             gui.toggle_mode(False) # False sets mode to manual, True sets mode to auto
+            if not simMode:
+                mainUtils.ebrake.setEbrake(state = 0)
+            else:
+                print ('ebrake applied')
         print('in auto loop')
        
     else:  # manual mode
