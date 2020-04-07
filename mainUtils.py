@@ -1,7 +1,7 @@
 from modules.arc_mc_components.throttle import Throttle
 from modules.arc_mc_components.stepper import Stepper
 from modules.arc_mc_components.ebrake import Ebrake
-from modules.arc_mc_ctrlsys.interfaces import Steering, Speed, Blobs
+from modules.arc_mc_ctrlsys.interfaces import Steering, Speed, Blobs, SimulateFeedback
 
 try:
     from modules.arc_mc_ui.XboxCtrl import XboxCtrl
@@ -13,6 +13,7 @@ except:
 
 from json import load
 from time import sleep
+import pickle
 
 class MainUtils():
     def __init__(self, simulationMode, gpioFileName = None):
@@ -24,6 +25,8 @@ class MainUtils():
         self.tachometer = None
         self.gpio = None
         self.reinitAutoDrive = True
+        self.voltsList = []
+        self.anglesList = []
 
     def connectPeripherals(self):
         self.manualController = XboxCtrl(self.simMode)
@@ -66,7 +69,10 @@ class MainUtils():
             # print(e)
 
     def setupAutoDrive(self):
-        self.ebrake.setEbrake(state = 0) # stop bike 
+        if not self.simMode: 
+            self.ebrake.setEbrake(state = 0) # stop bike
+        else:
+            self.simFeedback = SimulateFeedback()
         self.blobsCtrlSys = Blobs(circ = 2.055, bikeHalfWidth = 100) # set bike half width in pixels
         self.speedCtrlSys = Speed(circ = 2.055)
         self.steerCtrlSys = Steering()
@@ -103,14 +109,53 @@ class MainUtils():
             # calculate steering angle and throttle voltage
             throttleVolt = self.speedCtrlSys.feedInput(bikeSpeed, crashTimes)
             steeringAngle = self.steerCtrlSys.feedInput(bikePosM, targetPosM, distanceTarget = 1)
-            if not self.simMode: # apply outputs
-                self.stepper.rotate(steeringAngle)
-                self.throttle.setVolt(throttleVolt)
-
-        #print(f"inputs: bikeSpeed {bikeSpeed}, bike pos {bikePosM}, target pos {targetPosM}, crashTimes {crashTimes}")
-        #print(f"outputs: throttleVolt {throttleVolt}, steeringAngle {steeringAngle}")
+            self.stepper.rotate(steeringAngle)
+            self.throttle.setVolt(throttleVolt)
         
         return success
+    
+    def autoDriveSimulate(self, networkPackage):
+        if self.reinitAutoDrive:
+            self.setupAutoDrive()
+       
+        success = 1
+
+        blobXpos = networkPackage.objects.xPos
+        blobWidths = networkPackage.objects.widths
+        blobDepths = networkPackage.objects.depths
+        bikeSpeed = networkPackage.bikeSpeed
+        bikePosPx = networkPackage.laneData.bikePosPx
+        targetPosM = networkPackage.laneData.targetPosM
+        bikePosM = networkPackage.laneData.bikePosM
+        sleep(0.1)
+        
+        # update blobs
+        self.blobsCtrlSys.update(xPos = blobXpos, widths = blobWidths, depths = blobDepths, bikePos = bikePosPx)
+        crashTimes = self.blobsCtrlSys.checkCrash(bikeSpeed)
+      
+        if self.blobsCtrlSys.checkEmergencyStop(crashTimes):
+            success = 0
+        else: 
+            # calculate steering angle and throttle voltage
+            throttleVolt = self.speedCtrlSys.feedInput(bikeSpeed, crashTimes)
+            steeringAngle = self.steerCtrlSys.feedInput(bikePosM, targetPosM, distanceTarget = 1)
+            self.voltsList.append(throttleVolt)
+            self.anglesList.append(steeringAngle)
+        
+        networkPackage.bikeSpeed = self.simFeedback.simulate(bikeSpeed, throttleVolt) 
+        #TODO makes sure networkPackage.bikeSpeed does not update when the function is called again 
+
+        return success
+    
+    def pickleVoltsAndAngles(self):
+        try:
+            with open('voltsList.pickle', 'wb') as pickleOut: #overwrites existing file
+                pickle.dump(self.voltsList, pickleOut, pickle.HIGHEST_PROTOCOL)
+            
+            with open('anglesList.pickle', 'wb') as pickleOut:
+                pickle.dump(self.anglesList, pickleOut, pickle.HIGHEST_PROTOCOL)
+        except pickle.PicklingError as e:
+            print('An exception occured: ', e)
 
     def deinit(self):
         self.ebrake.setEbrake(state = 0)

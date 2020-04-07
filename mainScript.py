@@ -21,6 +21,7 @@ if not simMode:
 # TODO on socket event, display images on GUI - call gui.display_image(file_path)
 # TODO socket stuff for depth and pathWidth data
 
+
 # if not simMode, at this point we would perform calibration
 
 # after the init and calibrate states, call gui.raise_main_frame to close the loading screen
@@ -39,7 +40,7 @@ while gui.is_alive():
         continue
 
     if gui.is_auto_mode:
-        success = mainUtils.autoDrive()
+        success = 1#mainUtils.autoDrive()
         if not success:
             gui.show_info_prompt('Obstacle Detected', 
                 'An obstacle was detected. Please click OK to switch to manual drive mode.') 
@@ -63,13 +64,19 @@ while gui.is_alive():
         print('in manual loop')
     
     #display speed on gui
-    gui.display_speed(mainUtils.tachometer.speed)
+    if not simMode:
+        gui.display_speed(mainUtils.tachometer.speed)
+    else:
+        #TODO get speed from networkPackage and display that
+        pass
 
 ###################
 # Deinitialize
 ###################
 if not simMode:
     mainUtils.deinit()
+else:
+    mainUtils.pickleVoltsAndAngles()
 # not necessary to call gui.deinit() here because that is what triggers the drive loop to end
 
 ##############
