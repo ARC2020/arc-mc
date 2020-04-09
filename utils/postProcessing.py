@@ -49,12 +49,11 @@ class PostProcessing():
         self.voltAxes.set_ylabel('Throttle Voltage (V)')
         self.voltAxes.set_xlabel('Some Increment??')
         self.voltAxes.set_xlim([0, 300])
-        self.voltAxes.set_ylim([0, 10])
+        self.voltAxes.set_ylim([0, 2])
         self.voltAxes.grid(True)
 
         self.framesAxes.set_title('RealSense Camera Frame')
-        self.framesAxes.set_yticklabels([])
-        self.framesAxes.set_xticklabels([])
+        self.framesAxes.axis('off')
 
         timeX = [i for i in range(0, self.counter)]
         voltY = self.voltsList[slice(self.counter)]
@@ -69,15 +68,16 @@ class PostProcessing():
     def calcXYfromAngle(self, angleDegree):
         angleRad = (angleDegree+90) * np.pi/180
         y = np.sin(angleRad)
-        x = np.cos(angleRad)
+        x = -np.cos(angleRad)
         return (x, y)
     
     def runAnimation(self, updateInterval, saveAs = 'animation.mp4'):
         self.fig = plt.figure()
-        self.angleAxes = self.fig.add_subplot(3,1,2, polar=True, projection='polar')
-        self.voltAxes = self.fig.add_subplot(3,1,3)
-        self.framesAxes = self.fig.add_subplot(3,1,1)
-        plt.subplots_adjust(hspace = 0.3)
+        self.angleAxes = self.fig.add_subplot(2,2,3, polar=True, projection='polar')
+        self.voltAxes = self.fig.add_subplot(2,2,4)
+        self.framesAxes = self.fig.add_subplot(2,1,1)
+        #plt.subplots_adjust(hspace = 0.3)
+        plt.get_current_fig_manager().window.state('zoomed')
 
         self.ani = animation.FuncAnimation(self.fig, self.animate, interval=updateInterval ,blit=False, repeat=False, frames = self.max-1)
         #either save it or show it - don't do both - results in recursion stack errors
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     framesFileName = 'framesList.pickle'
     
     anglesList = [i for i in range(-45, 45)]
-    voltsList = np.random.randint(low =0, high=7, size =numEntries)
+    voltsList = np.random.randint(low =0, high=3, size =numEntries)
     framesList = []
     for i in range(-45,45):
         if i%2 == 0:
