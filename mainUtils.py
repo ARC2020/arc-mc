@@ -2,6 +2,8 @@ from modules.arc_mc_components.throttle import Throttle
 from modules.arc_mc_components.stepper import Stepper
 from modules.arc_mc_components.ebrake import Ebrake
 from modules.arc_mc_ctrlsys.interfaces import Steering, Speed, Blobs, SimulateFeedback
+from modules.arc_comms.NetworkPackage import NetworkPackage
+from modules.arc_comms.unpack import Unpack, Sensors
 
 try:
     from modules.arc_mc_ui.XboxCtrl import XboxCtrl
@@ -27,6 +29,8 @@ class MainUtils():
         self.reinitAutoDrive = True
         self.voltsList = []
         self.anglesList = []
+        self.framesList = []
+        self.unpackObj = Unpack(simulationMode)
 
     def connectPeripherals(self):
         self.manualController = XboxCtrl(self.simMode)
@@ -57,16 +61,13 @@ class MainUtils():
             throttlePos = self.manualController.get_throttle_position()
             throttleVoltage = Speed.joystickToThrottle(throttlePos)
             self.throttle.setVolt(throttleVoltage)
-            # print(f"throttlePos: {throttlePos}, throttleVolt: {throttleVoltage}")
 
             # read controller.get_steering_position() and write to stepper GPIO pin
             steeringPos = self.manualController.get_steering_position()
             steeringAngle = int(Steering.joystickToSteeringAngle(steeringPos))
             self.stepper.rotate(steeringAngle)
-            #print(f"steeringPos: {steeringPos}, steeringAngle: {steeringAngle}")
-        except Exception as e:
+        except Exception:
             self.stepper.store()
-            # print(e)
 
     def setupAutoDrive(self):
         if not self.simMode: 
@@ -114,19 +115,19 @@ class MainUtils():
         
         return success
     
-    def autoDriveSimulate(self, networkPackage):
+    def autoDriveSimulate(self, cvData):
         if self.reinitAutoDrive:
             self.setupAutoDrive()
        
         success = 1
 
-        blobXpos = networkPackage.objects.xPos
-        blobWidths = networkPackage.objects.widths
-        blobDepths = networkPackage.objects.depths
-        bikeSpeed = networkPackage.bikeSpeed
-        bikePosPx = networkPackage.laneData.bikePosPx
-        targetPosM = networkPackage.laneData.targetPosM
-        bikePosM = networkPackage.laneData.bikePosM
+        blobXpos = cvData.blobXpos
+        blobWidths = cvData.blobWidths
+        blobDepths = cvData.blobDepths
+        bikeSpeed = cvData.bikeSpeed
+        bikePosPx = cvData.bikePosPx
+        targetPosM = cvData.targetPosM
+        bikePosM = cvData.bikePosM
         sleep(0.1)
         
         # update blobs
@@ -141,23 +142,37 @@ class MainUtils():
             steeringAngle = self.steerCtrlSys.feedInput(bikePosM, targetPosM, distanceTarget = 1)
             self.voltsList.append(throttleVolt)
             self.anglesList.append(steeringAngle)
+            # TODO self.framesList.append(cvData.frame)
         
-        networkPackage.bikeSpeed = self.simFeedback.simulate(bikeSpeed, throttleVolt) 
-        #TODO makes sure networkPackage.bikeSpeed does not update when the function is called again 
+        cvData.bikeSpeed = self.simFeedback.simulate(bikeSpeed, throttleVolt) 
+        #TODO makes sure cvData.bikeSpeed does not update when the function is called again 
 
         return success
     
-    def pickleVoltsAndAngles(self):
+    def getSpeed(self):
+        if self.simMode:
+            return self.unpackObj.dataOut.bikeSpeed
+        else:
+            return self.tachometer.speed
+
+    def pickleOutput(self, fileName, dataList):
         try:
-            with open('voltsList.pickle', 'wb') as pickleOut: #overwrites existing file
-                pickle.dump(self.voltsList, pickleOut, pickle.HIGHEST_PROTOCOL)
+            with open(fileName, 'wb') as pickleOut: #overwrites existing file
+                pickle.dump(dataList, pickleOut, pickle.HIGHEST_PROTOCOL)
             
-            with open('anglesList.pickle', 'wb') as pickleOut:
-                pickle.dump(self.anglesList, pickleOut, pickle.HIGHEST_PROTOCOL)
         except pickle.PicklingError as e:
             print('An exception occured: ', e)
 
     def deinit(self):
+        if self.simMode:
+            self.pickleOutput('voltsList.pickle', self.voltsList)
+            self.pickleOutput('anglessList.pickle', self.anglesList)
+            # self.pickleOutput('framesList.pickle', self.framesList) 
+            # TODO probably best to not store framesList as it can get quite large
+        else:
+            self.deinitPeripherals
+
+    def deinitPeripherals(self):
         self.ebrake.setEbrake(state = 0)
         self.throttle.off()
         self.stepper.reset()

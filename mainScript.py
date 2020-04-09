@@ -5,7 +5,6 @@ from mainUtils import MainUtils
 ###################
 # Initialization
 ###################
-
 simMode = True
 
 # GUI Initialization - spawn the UI thread and display the loading screen
@@ -16,13 +15,12 @@ gui.start()
 mainUtils = MainUtils(simMode) 
 if not simMode:
     mainUtils.connectPeripherals() # throttle, stepper, ebrake, tachometer and manual controller setup
-
-# Socket initialization
-# TODO on socket event, display images on GUI - call gui.display_image(file_path)
-# TODO socket stuff for depth and pathWidth data
-
-
-# if not simMode, at this point we would perform calibration
+    # TODO initialize network connection between RPi and Jetson
+    # TODO in another thread get cvData from Jetson and add to mainUtils.cvDataQ
+else:
+    mainUtils.unpackObj.setup(pickleFilename = 'cvData.pickle')
+         
+# TODO if not simMode, at this point we would perform calibration
 
 # after the init and calibrate states, call gui.raise_main_frame to close the loading screen
 sleep(0.25) # this is necessary
@@ -38,9 +36,19 @@ while gui.is_alive():
         print('waiting for trike to start')
         sleep(2)
         continue
-
+    
     if gui.is_auto_mode:
-        success = 1#mainUtils.autoDrive()
+        success = False
+        if not simMode:
+            success = mainUtils.autoDrive()
+        elif simMode and not mainUtils.unpackObj.dataIn.empty():
+            mainUtils.unpackObj.translate(mainUtils.unpackObj.dataIn.pop(0)) #puts translated data in dataOut
+            success = mainUtils.autoDriveSimulate(mainUtils.unpackObj.dataOut) 
+            gui.display_image(mainUtils.unpackObj.dataOut.frame)
+        else:
+            success = True
+            gui.clear_image()
+
         if not success:
             gui.show_info_prompt('Obstacle Detected', 
                 'An obstacle was detected. Please click OK to switch to manual drive mode.') 
@@ -49,8 +57,9 @@ while gui.is_alive():
                 mainUtils.ebrake.setEbrake(state = 0)
             else:
                 print ('ebrake applied')
+
         print('in auto loop')
-       
+
     else:  # manual mode
         mainUtils.reinitAutoDrive = True
         if not simMode:
@@ -64,19 +73,12 @@ while gui.is_alive():
         print('in manual loop')
     
     #display speed on gui
-    if not simMode:
-        gui.display_speed(mainUtils.tachometer.speed)
-    else:
-        #TODO get speed from networkPackage and display that
-        pass
+    gui.display_speed(mainUtils.getSpeed())
 
 ###################
 # Deinitialize
 ###################
-if not simMode:
-    mainUtils.deinit()
-else:
-    mainUtils.pickleVoltsAndAngles()
+mainUtils.deinit()
 # not necessary to call gui.deinit() here because that is what triggers the drive loop to end
 
 ##############
