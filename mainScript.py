@@ -29,11 +29,14 @@ gui.raise_main_frame()
 ###################
 # Drive Loop
 ###################
-
 while gui.is_alive():
+    #display speed on gui
+    gui.display_speed(mainUtils.getSpeed())
+
     # if user has not started the trike, continue looping
     if not gui.is_trike_started:
         print('waiting for trike to start')
+        gui.display_speed(0)
         sleep(2)
         continue
     
@@ -41,8 +44,9 @@ while gui.is_alive():
         success = False
         if not simMode:
             success = mainUtils.autoDrive()
-        elif simMode and not mainUtils.unpackObj.dataIn.empty():
-            mainUtils.unpackObj.translate(mainUtils.unpackObj.dataIn.pop(0)) #puts translated data in dataOut
+        elif simMode and len(mainUtils.unpackObj.dataIn) > 0:
+            temp = mainUtils.unpackObj.dataIn.pop(0)
+            mainUtils.unpackObj.translate(temp) #puts translated data in dataOut
             success = mainUtils.autoDriveSimulate(mainUtils.unpackObj.dataOut) 
             gui.display_image(mainUtils.unpackObj.dataOut.frame)
         else:
@@ -57,7 +61,6 @@ while gui.is_alive():
                 mainUtils.ebrake.setEbrake(state = 0)
             else:
                 print ('ebrake applied')
-
         print('in auto loop')
 
     else:  # manual mode
@@ -71,9 +74,6 @@ while gui.is_alive():
             if mainUtils.manualController.check_brake() == 0 and mainUtils.ebrake.flagBrake == 0:
                 mainUtils.manualDrive()
         print('in manual loop')
-    
-    #display speed on gui
-    gui.display_speed(mainUtils.getSpeed())
 
 ###################
 # Deinitialize

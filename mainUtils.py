@@ -30,6 +30,7 @@ class MainUtils():
         self.voltsList = []
         self.anglesList = []
         self.framesList = []
+        self.speedsList = []
         self.unpackObj = Unpack(simulationMode)
 
     def connectPeripherals(self):
@@ -142,10 +143,10 @@ class MainUtils():
             steeringAngle = self.steerCtrlSys.feedInput(bikePosM, targetPosM, distanceTarget = 1)
             self.voltsList.append(throttleVolt)
             self.anglesList.append(steeringAngle)
-            # TODO self.framesList.append(cvData.frame)
+            self.framesList.append(cvData.frame)
+            self.speedsList.append(cvData.bikeSpeed)
         
         cvData.bikeSpeed = self.simFeedback.simulate(bikeSpeed, throttleVolt) 
-        #TODO makes sure cvData.bikeSpeed does not update when the function is called again 
 
         return success
     
@@ -156,6 +157,7 @@ class MainUtils():
             return self.tachometer.speed
 
     def pickleOutput(self, fileName, dataList):
+        #print("List: ", dataList)
         try:
             with open(fileName, 'wb') as pickleOut: #overwrites existing file
                 pickle.dump(dataList, pickleOut, pickle.HIGHEST_PROTOCOL)
@@ -166,9 +168,10 @@ class MainUtils():
     def deinit(self):
         if self.simMode:
             self.pickleOutput('voltsList.pickle', self.voltsList)
-            self.pickleOutput('anglessList.pickle', self.anglesList)
-            # self.pickleOutput('framesList.pickle', self.framesList) 
-            # TODO probably best to not store framesList as it can get quite large
+            self.pickleOutput('anglesList.pickle', self.anglesList)
+            self.pickleOutput('framesList.pickle', self.framesList) 
+            self.pickleOutput('speedsList.pickle', self.speedsList) 
+
         else:
             self.deinitPeripherals
 
